@@ -1,94 +1,85 @@
-# Claude Code Fuel Gauge
+# VSCode Claude Usage Monitor
+ [English](./README.md) | [中文](./README_zh.md) 
 
-Claude Code Fuel Gauge shows you how much context runway you have in your current session, even when you are running multiple sessions at a time.
+Real-time context window usage and session active time display for the VSCode Claude Code extension. Glance at your status bar, stay in the flow.
 
-In Claude Code's VS Code extension, you don't see context usage until it warns you. Fuel Gauge puts a live percentage in your status bar, color-coded green → yellow → red, so you see it coming.
+## Tooltip Details
 
-Works in VS Code, Antigravity, and other VS Code forks.
+![](./images/img1.png)
 
-<p align="center">
-  <img src="images/status-active.png" width="350" alt="Claude Code Fuel Gauge showing 31% context usage in green">
-</p>
+- **Token Breakdown** — Context split into System overhead / Messages / Total / Free space, clear at a glance
+- **Active Time** — Tracks Claude's actual working time (thinking/responding), automatically skipping idle periods (>15 min inactivity)
+- **Model & Window** — Displays current model name and context window size, covering 46 mainstream models with support for custom additions via `settings.json`
+- **Incremental Updates** — Each poll only reads newly added file content, never re-parses processed data, zero system burden
+- **Auto Session Matching** — Automatically identifies the active session across multiple workspaces/sessions
 
-## Why Fuel Gauge
+> Note: When switching sessions, the tooltip may not update immediately due to caching. Simply send a new message in the session or reload the window.
 
-- **You see it coming.** No more surprise "context low" warnings. You see the percentage climbing and can plan your exit before quality drops.
-- **Stay in the flow.** No command to type, no window to open. Glance at the status bar, keep working.
-- **Session planning.** At 60%, you know you can fit one more big task. At 80%, you know to wrap up. Context becomes a resource you manage, not a cliff you fall off.
-- You stop needing the `/context` command in Claude Code.
-- You can disable `/autocompact` and manage your own context because you can see it.
+## vs. `/context` Command
 
-### Why not just use `/context`?
+<div align="center">
+  <img src="./images/img2.png" alt="Comparison with /context command" width="400" />
+</div>
 
-Fuel Gauge calculates usage from both input and output tokens, and compensates for system token overhead that Claude Code doesn't expose in its statusline data. Claude Code's `/context` command and its statusline `used_percentage` only count input tokens and exclude system overhead, so they can report free space when you're effectively at the limit. With the right `systemOverhead` setting, Fuel Gauge's percentage closely tracks the "Context low" warning that Claude Code shows in the terminal.
+## Key Differences from Upstream
 
-## Display states
+- The original plugin uses Claude's `statusline` command to fetch context data, which **blocks other statusline tools** such as `ccometixline` and `ccstatusline`. This fork parses data directly from the `.jsonl` session files that Claude automatically generates in your workspace — no conflict with any statusline tool
+- Adds four-category token breakdown, session active time, and automatic model recognition, with support for custom model names and context window sizes
+- Bridge script has been deprecated; all functionality is implemented in `extension.js` alone
 
-- **Active** — colored percentage (green/yellow/red based on thresholds)
-- **Stale** — percentage with a circle-slash icon, no color (no update for >5 minutes)
-- **No session** — 0%, no color
+## Performance
 
-<p align="center">
-  <img src="images/status-states.png" width="350" alt="Fuel Gauge display states — red critical, green active, yellow warning, grey inactive">
-</p>
+- **Zero External Dependencies** — Pure Node.js built-in modules (`fs`, `path`, `os`). No Python 3, no bridge script
+- **Tail Scanning** — Only reads the last 512KB of the file for the assistant line, never scans the full file
+- **15-Second Polling** — Configurable interval (`fuel-gauge.pollInterval`), each update cycle takes < 1ms
+- **Incremental Reading** — Active time computation only reads new bytes when the file grows; zero I/O when file size is unchanged
 
-## Install
+## Installation
 
-Search for **Claude Code Fuel Gauge** in the VS Code Extensions panel, or install from the command line:
+1. Install the original [Claude Code Fuel Gauge](https://marketplace.visualstudio.com/items?itemName=makingaipractical.claude-code-fuel-gauge) extension in VSCode
+2. Download  `src/extension.js` from this repository and replace it at `~/.vscode/extensions/makingaipractical.claude-code-fuel-gauge-0.5.1/out/extension.ts`
+3. Run `Developer: Reload Window` in VSCode
 
-```bash
-code --install-extension makingaipractical.claude-code-fuel-gauge
-```
+To customize `systemOverhead`, model name, or context window sizes, add them to `settings.json` (see [Configuration](#configuration)).
 
-For VS Code forks like Antigravity, download the `.vsix` from the [Releases page](https://github.com/makingaipractical/claude-code-fuel-gauge/releases) and install via the extensions panel (three dots > "Install from VSIX").
+## Configuration
 
-Restart any running Claude Code sessions after installing. The extension sets up everything automatically.
-
-## How it works
-
-Claude Code has a [statusline feature](https://code.claude.com/docs/en/statusline) that exposes context window data as JSON. Fuel Gauge uses this in two parts:
-
-1. **Bridge script** — automatically installed on first activation. Claude Code pipes context data to this script, which writes a JSON file per session to `~/.claude/fuel-gauge/`.
-
-2. **Extension** — polls that directory every 15 seconds, finds the session matching your current workspace, and displays the percentage in the status bar.
-
-Each VS Code window shows the context for its own workspace. Multiple concurrent Claude Code sessions are supported — one per project directory.
-
-## Requirements
-
-- VS Code 1.93+ (or compatible fork)
-- Claude Code CLI (works with both 200k and 1M token context windows)
-- Python 3 (used by the bridge script to parse JSON)
-
-## Settings
+In VSCode `settings.json`:
 
 | Setting | Default | Description |
-|---------|---------|-------------|
-| `fuel-gauge.pollInterval` | 15 | How often to check for updates (seconds) |
-| `fuel-gauge.warningThreshold` | 60 | % at which indicator turns yellow |
-| `fuel-gauge.dangerThreshold` | 80 | % at which indicator turns red |
-| `fuel-gauge.systemOverhead` | 18000 | Estimated system token overhead (invisible to statusline). Increase if Fuel Gauge underreports vs Claude's "Context low" warning |
+|--------|--------|-------------|
+| `fuel-gauge.systemOverhead` | `18000` | System overhead tokens |
+| `fuel-gauge.pollInterval` | `15` | Polling interval (seconds) |
+| `fuel-gauge.warningThreshold` | `60` | Yellow warning threshold (%) |
+| `fuel-gauge.dangerThreshold` | `80` | Red danger threshold (%) |
+| `fuel-gauge.model` | `""` | Custom model name |
+| `fuel-gauge.modelContextLength` | `{}` | Custom model Context Length |
 
-## Known issues
+Example:
 
-**Accuracy depends on system overhead.** Claude Code uses hidden tokens (system prompt, tool definitions, MCP configs, CLAUDE.md) that aren't reported in statusline data. Fuel Gauge compensates with a configurable `systemOverhead` setting (default 18,000 tokens). If your percentage consistently underreports compared to Claude's "Context low" warning, increase this value. In practice, the default overhead is quite accurate.
+```json
+{
+    "fuel-gauge.systemOverhead": 24100,
+    "fuel-gauge.model": "my-new-model",
+    "fuel-gauge.modelContextLength": {
+        "my-new-model": 500000
+    }
+}
+```
 
-**Status bar stops updating on macOS.** Claude Code has an upstream bug ([#32660](https://github.com/anthropics/claude-code/issues/32660)) where the statusline command can silently stop firing on macOS. When this happens (sometimes after "/resume", but not always), Fuel Gauge shows a stale percentage or stays at 0%. Restarting the Claude Code session usually fixes it. No workaround exists at this time.
+> `systemOverhead` defaults to 18000. Calibrate it against the System prompt and System tools values from the `/context` command.
 
-**Workspace matching.** The status bar shows context for the Claude Code session whose project directory matches the VS Code workspace folder. If you run Claude Code from a different directory than the one open in VS Code, Fuel Gauge won't pick it up. This is by design — the status bar belongs to the workspace.
+> `fuel-gauge.model` and `fuel-gauge.modelContextLength` appear gray in `settings.json` because they are not registered in VSCode's configuration schema. This is purely a static validation hint from VSCode — they work exactly as intended.
 
-**Icon differences across editors.** In VS Code, the status bar shows a Claude icon alongside a dashboard gauge. In forks like Antigravity that don't include newer codicons, only the gauge appears. Functionality is identical.
+## System Requirements
 
-## Privacy
+- VS Code 1.93+
+- Original Claude Code Fuel Gauge extension installed
 
-No API calls, no telemetry, no runtime dependencies. Everything runs locally using Claude Code's own statusline data.
+## Acknowledgments
 
-## Not affiliated with Anthropic
+Forked from [makingaipractical/claude-code-fuel-gauge](https://github.com/makingaipractical/claude-code-fuel-gauge). Thanks to the original author for their contribution to the open-source community.
 
-This is a community tool. Not made by, endorsed by, or affiliated with Anthropic.
+## License
 
-## Version History
-
-**v0.5.0** — Renamed from BrainDrain CC to Claude Code Fuel Gauge. New dashboard gauge icon, new screenshots, improved Marketplace discoverability.
-
-Previously released as BrainDrain CC (v0.1.0–v0.4.4).
+MIT License — see [LICENSE](LICENSE). Copyright (c) 2026 MakingAIPractical.
