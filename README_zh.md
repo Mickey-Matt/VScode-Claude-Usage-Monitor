@@ -38,7 +38,7 @@
 
 ## 安装
 1. VScode 中安装原插件 Claude Code Fuel Gauge
-2. 下载本仓库的 `src/extension.js`，替换到 `~/.vscode/extensions/makingaipractical.claude-code-fuel-gauge-0.5.1/out/extension.ts`
+2. 下载本仓库的 `dist/extension.js`，替换到 `~/.vscode/extensions/makingaipractical.claude-code-fuel-gauge-0.5.1/out/extension.js`
 
 如需自定义 `systemOverhead`、模型名、上下文长度，在 `settings.json` 中添加即可（见[配置](#配置)）。
 

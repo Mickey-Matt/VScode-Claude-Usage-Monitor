@@ -37,7 +37,7 @@ Real-time context window usage and session active time display for the VSCode Cl
 ## Installation
 
 1. Install the original [Claude Code Fuel Gauge](https://marketplace.visualstudio.com/items?itemName=makingaipractical.claude-code-fuel-gauge) extension in VSCode
-2. Download  `src/extension.js` from this repository and replace it at `~/.vscode/extensions/makingaipractical.claude-code-fuel-gauge-0.5.1/out/extension.ts`
+2. Download  `dist/extension.js` from this repository and replace it at `~/.vscode/extensions/makingaipractical.claude-code-fuel-gauge-0.5.1/out/extension.js`
 3. Run `Developer: Reload Window` in VSCode
 
 To customize `systemOverhead`, model name, or context window sizes, add them to `settings.json` (see [Configuration](#configuration)).
